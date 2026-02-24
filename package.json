@@ -56,7 +56,7 @@
   "strapi": {
     "kind": "plugin",
     "name": "faq-ai-bot",
-    "displayName": "faq-AI-bot Configuration",
+    "displayName": "faq-ai-bot Configuration",
     "description": "A plugin for integrating ai chatbot"
   },
   "name": "strapi-plugin-faq-ai-bot",
@@ -64,11 +64,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sruthialex12345/strapi-plugin-faq-AI-bot.git"
+    "url": "git+https://github.com/sruthialex12345/strapi-plugin-faq-ai-bot.git"
   },
   "bugs": {
-    "url": "https://github.com/sruthialex12345/strapi-plugin-faq-AI-bot/issues"
+    "url": "https://github.com/sruthialex12345/strapi-plugin-faq-ai-bot/issues"
   },
-  "homepage": "https://github.com/sruthialex12345/strapi-plugin-faq-AI-bot#readme",
+  "homepage": "https://github.com/sruthialex12345/strapi-plugin-faq-ai-bot#readme",
   "author": "Sruthi Alex <sruthi.alex@nustartz.in>"
 }

@@ -1,3 +1,3 @@
-# faq-AI-bot
+# faq-ai-bot
 
 A plugin for integrating ai chatbot

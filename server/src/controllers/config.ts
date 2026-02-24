@@ -47,7 +47,7 @@ async function validateBaseDomain(
 
 export default ({ strapi }: { strapi: Core.Strapi }) => ({
   async index(ctx: any) {
-    const settings = await strapi.plugin('faq-AI-bot').service('config').getConfig();
+    const settings = await strapi.plugin('faq-ai-bot').service('config').getConfig();
 
     const contentTypes = Object.values(strapi.contentTypes)
       .filter((ct: any) => ct.uid.startsWith('api::'))
@@ -78,7 +78,7 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
       return;
     }
 
-    const data = await strapi.plugin('faq-AI-bot').service('config').setConfig(settings);
+    const data = await strapi.plugin('faq-ai-bot').service('config').setConfig(settings);
 
     ctx.body = data;
   },

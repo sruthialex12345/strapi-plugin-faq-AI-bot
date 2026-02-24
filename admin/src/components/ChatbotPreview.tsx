@@ -66,7 +66,7 @@ const ChatbotPreview = () => {
     setChatInput('');
 
     try {
-      const res = await fetch('/api/faq-AI-bot/ask', {
+      const res = await fetch('/api/faq-ai-bot/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: userText }),
