@@ -12,14 +12,19 @@
   "attributes": {
     "question": {
       "type": "string",
+      "configurable": false,
       "required": true
     },
     "answer": {
       "type": "richtext",
+      "configurable": false,
       "required": true
     },
     "embedding": {
-      "type": "json"
+      "type": "json",
+      "private": true,
+      "configurable": false,
+      "visible": false
     }
   }
 }
