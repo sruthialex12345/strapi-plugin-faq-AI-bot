@@ -59,7 +59,7 @@
     "displayName": "faq-AI Configuration",
     "description": "A plugin for integrating ai chatbot"
   },
-  "name": "strapi-plugin-faq-AI",
+  "name": "strapi-plugin-faq-ai",
   "description": "A plugin for integrating ai chatbot",
   "license": "MIT",
   "repository": {
