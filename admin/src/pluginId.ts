@@ -1,1 +1,1 @@
-export const PLUGIN_ID = 'faq-AI';
+export const PLUGIN_ID = 'faq-AI-bot';
