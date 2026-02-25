@@ -72,9 +72,16 @@ const HomePage = () => {
       const normalizedBase = normalizeDomain(settings.baseDomain || '');
       setBaseDomain(normalizedBase);
       if (normalizedBase) {
-        fetch(`${normalizedBase}/card-mapping.json`)
-          .then((res) => res.json())
-          .then(setCardOptions)
+        fetch(`${normalizedBase}/card-mapping.json`, { cache: 'no-store' })
+          .then((res) => {
+            if (!res.ok && res.status !== 304) {
+              throw new Error('Failed to load card mapping');
+            }
+            return res.status === 304 ? null : res.json();
+          })
+          .then((data) => {
+            if (data) setCardOptions(data);
+          })
           .catch(() => setCardOptions([]));
       }
 
