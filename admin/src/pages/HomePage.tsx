@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Main, Typography, Flex, Button, Box, Loader } from '@strapi/design-system';
-import { Check } from '@strapi/icons';
+import { Check, Information } from '@strapi/icons';
 import { useFetchClient, useNotification } from '@strapi/admin/strapi-admin';
 
 import ChatbotPreview from '../components/ChatbotPreview';
@@ -8,7 +8,8 @@ import ConfigSettings from '../components/ConfigSettings';
 import CollectionSection from '../components/CollectionSection';
 import SuggestedQuestions from '../components/SuggestedQuestions';
 import InstructionsSection from '../components/InstructionsSection';
-import PopUp from '../components/PopUp';
+import SetupProgress from '../components/SetupProgress';
+import LockedSection from '../components/LockedSection';
 
 type FieldConfig = {
   name: string;
@@ -21,6 +22,7 @@ type CollectionConfig = {
   fields: FieldConfig[];
   cardStyle?: string;
 };
+
 function normalizeDomain(url: string): string {
   if (!url) return '';
   let normalized = url.trim().toLowerCase();
@@ -44,44 +46,62 @@ const HomePage = () => {
   const [baseDomain, setBaseDomain] = useState('');
   const [contactLink, setContactLink] = useState('');
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
-  const [editingQuestionIndex, setEditingQuestionIndex] = useState<number | null>(null);
   const [cardOptions, setCardOptions] = useState<any[]>([]);
 
   // UI States
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [activeModal, setActiveModal] = useState<
-    'key' | 'logo' | 'domain' | 'contact' | 'collections' | 'suggestion' | null
-  >(null);
+  const [isSaved, setIsSaved] = useState(false);
+  const [originalData, setOriginalData] = useState<string>('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  
+  const isLocked = !baseDomain || !openaiKey || !contactLink;
 
   const { get, post } = useFetchClient();
   const { toggleNotification } = useNotification();
+
+  // Track Unsaved Changes
+  useEffect(() => {
+    const currentData = JSON.stringify({
+      openaiKey,
+      systemInstructions,
+      responseInstructions,
+      logoUrl,
+      baseDomain,
+      contactLink,
+      suggestedQuestions,
+      activeCollections,
+    });
+
+    if (originalData && currentData !== originalData) {
+      setHasUnsavedChanges(true);
+    } else {
+      setHasUnsavedChanges(false);
+    }
+  }, [openaiKey, systemInstructions, responseInstructions, logoUrl, baseDomain, contactLink, suggestedQuestions, activeCollections, originalData]);
 
   const init = async () => {
     try {
       const { data } = await get('/faq-ai-bot/collections');
       const settings = data.settings || {};
       const savedConfig = settings.config || {};
-      const savedStyles = settings.cardStyles || {}; // Added from friend's update
+      const savedStyles = settings.cardStyles || {};
 
-      // Set Settings from Database
       setOpenaiKey(settings.openaiKey || '');
       setSystemInstructions(settings.systemInstructions || '');
       setResponseInstructions(settings.responseInstructions || '');
       setLogoUrl(settings.logoUrl || '');
+
       const normalizedBase = normalizeDomain(settings.baseDomain || '');
       setBaseDomain(normalizedBase);
+
       if (normalizedBase) {
         fetch(`${normalizedBase}/card-mapping.json`, { cache: 'no-store' })
           .then((res) => {
-            if (!res.ok && res.status !== 304) {
-              throw new Error('Failed to load card mapping');
-            }
+            if (!res.ok && res.status !== 304) throw new Error('Failed to load card mapping');
             return res.status === 304 ? null : res.json();
           })
-          .then((data) => {
-            if (data) setCardOptions(data);
-          })
+          .then((data) => { if (data) setCardOptions(data); })
           .catch(() => setCardOptions([]));
       }
 
@@ -89,21 +109,14 @@ const HomePage = () => {
       setSuggestedQuestions(settings.suggestedQuestions || []);
 
       const SYSTEM_FIELDS = [
-        'createdAt',
-        'updatedAt',
-        'publishedAt',
-        'createdBy',
-        'updatedBy',
-        'locale',
-        'localizations',
-        '__component',
-        'id',
+        'createdAt', 'updatedAt', 'publishedAt', 'createdBy', 'updatedBy',
+        'locale', 'localizations', '__component', 'id',
       ];
 
       const formattedAll: CollectionConfig[] = (data.contentTypes || []).map((ct: any) => ({
         uid: ct.uid,
         name: ct.displayName,
-        cardStyle: savedStyles[ct.uid] || undefined, // Added from friend's update
+        cardStyle: savedStyles[ct.uid] || undefined,
         fields: ct.attributes
           .filter((attr: any) => !SYSTEM_FIELDS.includes(attr.name))
           .map((attr: any) => ({
@@ -114,27 +127,31 @@ const HomePage = () => {
 
       setAllContentTypes(formattedAll);
 
-      // Set Active Collections
       const initialActive = formattedAll.filter((ct: CollectionConfig) =>
         Object.keys(savedConfig).includes(ct.uid)
       );
       setActiveCollections(initialActive);
+
+      // Snapshot for dirty checking
+      setOriginalData(JSON.stringify({
+        openaiKey: settings.openaiKey || '',
+        systemInstructions: settings.systemInstructions || '',
+        responseInstructions: settings.responseInstructions || '',
+        logoUrl: settings.logoUrl || '',
+        baseDomain: normalizedBase,
+        contactLink: settings.contactLink || '',
+        suggestedQuestions: settings.suggestedQuestions || [],
+        activeCollections: initialActive,
+      }));
+
     } catch (err: any) {
-      console.log('SAVE ERROR:', err);
-
-      const message =
-        err?.response?.data?.error ||
-        err?.response?.data?.message ||
-        'Invalid settings. Please check Base Domain.';
-
-      toggleNotification({
-        type: 'warning',
-        message,
-      });
+      const message = err?.response?.data?.error || err?.response?.data?.message || 'Error loading settings.';
+      toggleNotification({ type: 'warning', message });
     } finally {
       setIsLoading(false);
     }
   };
+
   useEffect(() => {
     init();
   }, [get]);
@@ -149,55 +166,23 @@ const HomePage = () => {
     setActiveCollections((prev) => prev.filter((c) => c.uid !== uid));
   };
 
-  // --- Logic for Modals ---
-  const handlePopupSave = (data: any) => {
-    if (activeModal === 'collections') {
-      const selectedUids = data as string[];
-      setActiveCollections((currentActive) => {
-        const remaining = currentActive.filter((c) => selectedUids.includes(c.uid));
-        const currentUids = currentActive.map((c) => c.uid);
-        const newUids = selectedUids.filter((uid) => !currentUids.includes(uid));
-        const newlyAdded = allContentTypes
-          .filter((ct) => selectedUids.includes(ct.uid) && !currentUids.includes(ct.uid))
-          .map((ct) => JSON.parse(JSON.stringify(ct)));
-        return [...remaining, ...newlyAdded];
-      });
-    } else if (activeModal === 'suggestion') {
-      setSuggestedQuestions((prev) => {
-        const newList = [...prev];
-        if (editingQuestionIndex !== null) newList[editingQuestionIndex] = data;
-        else newList.push(data);
-        return newList;
-      });
-      setEditingQuestionIndex(null);
-    } else if (activeModal === 'key') setOpenaiKey(data);
-    else if (activeModal === 'domain') setBaseDomain(data);
-    else if (activeModal === 'logo') setLogoUrl(data);
-    else if (activeModal === 'contact') setContactLink(data);
-
-    setActiveModal(null);
-  };
-
-  // Save Logic
   const save = async () => {
     if (!openaiKey || openaiKey.trim() === '') {
-      toggleNotification({
-        type: 'warning',
-        message: 'API Key not configured',
-      });
+      toggleNotification({ type: 'warning', message: 'API Key not configured' });
       return;
     }
     setIsSaving(true);
     try {
       const normalizedDomain = normalizeDomain(baseDomain);
       setBaseDomain(normalizedDomain);
+
       const configToSave: Record<string, string[]> = {};
-      const stylesToSave: Record<string, string> = {}; // Added from friend's update
+      const stylesToSave: Record<string, string> = {};
 
       activeCollections.forEach((item) => {
         const enabled = item.fields.filter((f) => f.enabled).map((f) => f.name);
         if (enabled.length > 0) configToSave[item.uid] = enabled;
-        if (item.cardStyle) stylesToSave[item.uid] = item.cardStyle; // Added from friend's update
+        if (item.cardStyle) stylesToSave[item.uid] = item.cardStyle;
       });
 
       await post('/faq-ai-bot/collections', {
@@ -211,6 +196,10 @@ const HomePage = () => {
         contactLink,
         suggestedQuestions,
       });
+
+      setIsSaved(true);
+      setHasUnsavedChanges(false);
+      setTimeout(() => setIsSaved(false), 3000);
 
       toggleNotification({ type: 'success', message: 'Settings saved successfully!' });
       await init();
@@ -230,125 +219,260 @@ const HomePage = () => {
 
   return (
     <Main>
+      {/* UNSAVED CHANGES BAR */}
+      {hasUnsavedChanges && (
+        <Box
+          style={{
+            width: '100%',
+            height: '50px',
+            background: '#FFF3CD',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingRight: '32px',
+            paddingLeft: '32px',
+            borderBottom: '2px solid #FDEAA8',
+            position: 'sticky',
+            top: 0,
+            zIndex: 6,
+          }}
+        >
+          <Flex alignItems="center" gap={2}>
+            <Information style={{ color: 'rgb(148, 83, 0)', width: 18, height: 18 }} />
+          <Typography
+            style={{
+              fontWeight: 500,
+              fontSize: '13px',
+              lineHeight: '19.5px',
+              color: '#8C6D1F',
+            }}
+          >
+            You have unsaved changes
+          </Typography>
+        </Flex>
+          
+          <Flex gap={4}>
+            <button 
+              onClick={() => init()}
+              style={{ 
+                background: 'none', 
+                border: 'none', 
+                cursor: 'pointer',
+                fontFamily: 'Inter',
+                fontWeight: 500,
+                fontSize: '12px',
+                color: '#32324D'
+              }}
+            >
+              Discard
+            </button>
+            <Button
+              onClick={save}
+              style={{
+                width: '87.84px',
+                height: '28px',
+                borderRadius: '10px',
+                background: '#4945FF',
+                border: 'none',
+                fontSize: '12px',
+                fontWeight: 500,
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0
+              }}
+            >
+              Save All
+            </Button>
+          </Flex>
+        </Box>
+      )}
+
+      {/* HEADER SECTION */}
       <Box
         background="neutral100"
         position="sticky"
-        top={0}
-        zIndex={2}
-        padding={8}
-        paddingBottom={6}
+        top={hasUnsavedChanges ? '50px' : 0}
+        zIndex={6}
+        paddingTop={8}
+        paddingBottom={4}
       >
-        <Flex justifyContent="space-between" alignItems="center">
-          <Typography variant="beta" fontWeight="bold">
-            Chatbot Configuration
-          </Typography>
-          <Button
-            onClick={save}
-            loading={isSaving}
-            startIcon={<Check />}
-            disabled={!openaiKey || openaiKey.trim() === ''}
+        <Box style={{ maxWidth: '704px', margin: '0 auto', width: '100%' }}>
+          <Flex justifyContent="space-between" alignItems="baseline">
+            <Box>
+              <Typography style={{ fontWeight: 700, fontSize: '20px', lineHeight: '30px', display: 'block', color: '#32324d' }}>
+                Chatbot Configuration
+              </Typography>
+              <Box paddingTop={1}>
+                <Typography style={{ fontWeight: 400, fontSize: '13px', lineHeight: '19.5px', color: '#666687' }}>
+                  Configure your AI chatbot's identity, data, and behaviour.
+                </Typography>
+              </Box>
+            </Box>
+
+            <Flex alignItems="center">
+              {isSaved ? (
+                <Box
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: '#eafbe7',
+                    padding: '0 14px',
+                    height: '34px',
+                    borderRadius: '8px',
+                  }}
+                >
+                  <Check width={14} height={14} color="rgb(50, 128, 72)" />
+                  <Typography style={{ fontSize: '13px', fontWeight: 500, color: 'rgb(50, 128, 72)', fontFamily: 'Inter, sans-serif' }}>
+                    Saved!
+                  </Typography>
+                </Box>
+              ) : (
+                !hasUnsavedChanges && (
+                  <Button
+                    onClick={save}
+                    disabled={!openaiKey || openaiKey.trim() === ''}
+                    startIcon={<Check width={14} height={14} />}
+                    style={{
+                      background: 'rgb(73, 69, 255)',
+                      border: 'none',
+                      color: 'white',
+                      fontSize: '13px',
+                      padding: '7px 14px',
+                      height: '34px',
+                      borderRadius: '8px',
+                      fontWeight: 500,
+                      textAlign: 'center',
+                      gap: '6px',
+                      fontFamily: 'Inter, sans-serif',
+                    }}
+                  >
+                    Save Settings
+                  </Button>
+                )
+              )}
+            </Flex>
+          </Flex>
+        </Box>
+      </Box>
+
+      <Box background="neutral100" paddingTop={6} paddingBottom={8} marginBottom={8}>
+        <Box style={{ maxWidth: '704px', margin: '0 auto', width: '100%' }}>
+
+          <SetupProgress
+            baseDomain={baseDomain}
+            openaiKey={openaiKey}
+            contactLink={contactLink}
+            collections={activeCollections}
+            questions={suggestedQuestions}
+            instructions={!!systemInstructions && !!responseInstructions}
+          />
+
+          <ConfigSettings
+            baseDomain={baseDomain}
+            openaiKey={openaiKey}
+            contactLink={contactLink}
+            onManage={(type: any, value?: string) => {
+              if (value !== undefined) {
+                if (type === 'key') setOpenaiKey(value);
+                if (type === 'domain') setBaseDomain(value);
+                if (type === 'contact') setContactLink(value);
+              }
+            }}
+          />
+
+          <LockedSection
+            title="Response Templates"
+            description="Define which data fields and card layouts the AI can use in structured responses."
+            isLocked={isLocked}
           >
-            Save Settings
-          </Button>
-        </Flex>
+            <CollectionSection
+              collections={activeCollections}
+              availableCollections={allContentTypes.filter(
+                (c) =>
+                  c.uid !== 'plugin::faq-ai-bot.faqqa' &&
+                  !activeCollections.some((active) => active.uid === c.uid)
+              )}
+              cardOptions={cardOptions}
+              onToggleField={(uid, fName) => {
+                setActiveCollections((prev) =>
+                  prev.map((c) =>
+                    c.uid !== uid
+                      ? c
+                      : {
+                          ...c,
+                          fields: c.fields.map((f: any) =>
+                            f.name === fName ? { ...f, enabled: !f.enabled } : f
+                          ),
+                        }
+                  )
+                );
+              }}
+              onToggleAll={(uid, val) => {
+                setActiveCollections((prev) =>
+                  prev.map((c) =>
+                    c.uid !== uid
+                      ? c
+                      : {
+                          ...c,
+                          fields: c.fields.map((f: any) => ({ ...f, enabled: val })),
+                        }
+                  )
+                );
+              }}
+              onRemoveCollection={handleRemoveCollection}
+              onUpdateCardStyle={handleUpdateCardStyle}
+              onAddCollection={(uid) => {
+                const newlyAdded = allContentTypes.find((ct) => ct.uid === uid);
+                if (newlyAdded) {
+                  const formatted = {
+                    ...JSON.parse(JSON.stringify(newlyAdded)),
+                    cardStyle: cardOptions[0]?.id || '',
+                  };
+                  setActiveCollections((prev) => [...prev, formatted]);
+                }
+              }}
+            />
+          </LockedSection>
+
+          <LockedSection
+            title="Suggested Questions"
+            description="Quick-tap prompts on the chatbot welcome screen to help users get started."
+            isLocked={isLocked}
+          >
+            <SuggestedQuestions
+              questions={suggestedQuestions}
+              onAdd={(val: string) => setSuggestedQuestions((prev) => [...prev, val])}
+              onEdit={(index: number, val: string) =>
+                setSuggestedQuestions((prev) => {
+                  const updated = [...prev];
+                  updated[index] = val;
+                  return updated;
+                })
+              }
+              onRemove={(index: number) =>
+                setSuggestedQuestions((prev) => prev.filter((_, i) => i !== index))
+              }
+              onReorder={(newQuestions: string[]) => setSuggestedQuestions([...newQuestions])}
+            />
+          </LockedSection>
+
+          <LockedSection
+            title="AI Instructions"
+            description="Rules and context the AI applies before every response. One instruction per line."
+            isLocked={isLocked}
+          >
+            <InstructionsSection
+              systemInstructions={systemInstructions}
+              responseInstructions={responseInstructions}
+              onUpdateSystem={setSystemInstructions}
+              onUpdateResponse={setResponseInstructions}
+            />
+          </LockedSection>
+        </Box>
       </Box>
-
-      <Box paddingLeft={8} paddingTop={2} paddingRight={8} background="neutral100">
-        <ConfigSettings
-          baseDomain={baseDomain}
-          openaiKey={openaiKey}
-          logoUrl={logoUrl}
-          contactLink={contactLink}
-          onManage={(type: any) => setActiveModal(type)}
-        />
-
-        <CollectionSection
-          collections={activeCollections}
-          cardOptions={cardOptions}
-          onToggleField={(uid, fName) => {
-            setActiveCollections((prev) =>
-              prev.map((c) =>
-                c.uid !== uid
-                  ? c
-                  : {
-                      ...c,
-                      fields: c.fields.map((f: FieldConfig) =>
-                        f.name === fName ? { ...f, enabled: !f.enabled } : f
-                      ),
-                    }
-              )
-            );
-          }}
-          onToggleAll={(uid, val) => {
-            setActiveCollections((prev) =>
-              prev.map((c) =>
-                c.uid !== uid
-                  ? c
-                  : {
-                      ...c,
-                      fields: c.fields.map((f: FieldConfig) => ({ ...f, enabled: val })),
-                    }
-              )
-            );
-          }}
-          onRemoveCollection={handleRemoveCollection}
-          onUpdateCardStyle={handleUpdateCardStyle}
-          onAddClick={() => setActiveModal('collections')}
-          isAddDisabled={
-            allContentTypes.filter((c) => c.uid !== 'plugin::faq-ai-bot.faqqa').length ===
-            activeCollections.length
-          }
-        />
-
-        <SuggestedQuestions
-          questions={suggestedQuestions}
-          onAddClick={() => {
-            setEditingQuestionIndex(null);
-            setActiveModal('suggestion');
-          }}
-          onEditClick={(index) => {
-            setEditingQuestionIndex(index);
-            setActiveModal('suggestion');
-          }}
-          onRemove={(index) => {
-            setSuggestedQuestions((prev) => prev.filter((_, i) => i !== index));
-          }}
-        />
-
-        <InstructionsSection
-          systemInstructions={systemInstructions}
-          responseInstructions={responseInstructions}
-          onUpdateSystem={setSystemInstructions}
-          onUpdateResponse={setResponseInstructions}
-        />
-      </Box>
-
-      <PopUp
-        isOpen={!!activeModal}
-        type={activeModal}
-        onClose={() => setActiveModal(null)}
-        onSave={handlePopupSave}
-        availableCollections={allContentTypes.filter(
-          (c) =>
-            c.uid !== 'plugin::faq-ai-bot.faqqa' &&
-            !activeCollections.some((active) => active.uid === c.uid)
-        )}
-        initialData={
-          activeModal === 'collections'
-            ? activeCollections.map((c) => c.uid)
-            : activeModal === 'suggestion'
-              ? editingQuestionIndex !== null
-                ? suggestedQuestions[editingQuestionIndex]
-                : ''
-              : activeModal === 'key'
-                ? openaiKey
-                : activeModal === 'domain'
-                  ? baseDomain
-                  : activeModal === 'logo'
-                    ? logoUrl
-                    : contactLink
-        }
-      />
 
       <ChatbotPreview />
     </Main>
