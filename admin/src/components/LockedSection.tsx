@@ -5,9 +5,9 @@ import { Lock } from '@strapi/icons';
 
 const Container = styled(Box)`
   border-radius: 14px;
-  border: 1px solid #DCDCE4;
-  box-shadow: 0px 1px 4px 0px #2121340A;
-  background: white;
+  border: 1px solid ${({ theme }) => theme.colors.neutral200};
+  // box-shadow: ${({ theme }) => theme.colors.neutral900} 0px 1px 4px 0px;
+  background: ${({ theme }) => theme.colors.neutral0};
   overflow: hidden;
   position: relative;
   width: 100%;
@@ -19,17 +19,17 @@ const LockBadge = styled.div`
   gap: 6px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgb(246, 246, 249);
-  border: 1px solid rgb(220, 220, 228);
+  background: ${({ theme }) => theme.colors.neutral100};
+  border: 1px solid ${({ theme }) => theme.colors.neutral200};
 
   span {
     font-size: 11px;
-    color: rgb(142, 142, 169);
+    color: ${({ theme }) => theme.colors.neutral500};
     font-weight: 500;
   }
 
   svg {
-    color: rgb(142, 142, 169);
+    color: ${({ theme }) => theme.colors.neutral500};
   }
 `;
 
@@ -42,7 +42,8 @@ const BlurOverlay = styled.div`
   align-items: center;
   justify-content: center;
 
-  background: rgba(246, 246, 249, 0.88);
+  background: ${({ theme }) => theme.colors.neutral100};
+  opacity: 0.88;
   backdrop-filter: blur(2px);
 `;
 
@@ -50,7 +51,7 @@ const LockCircle = styled.div`
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: rgb(234, 233, 254);
+  background: ${({ theme }) => theme.colors.primary100};
 
   display: flex;
   align-items: center;
@@ -59,13 +60,13 @@ const LockCircle = styled.div`
   margin-bottom: 8px;
 
   svg {
-    color: rgb(73, 69, 255);
+    color: ${({ theme }) => theme.colors.primary600};
   }
 `;
 
 const HeaderBox = styled(Box)`
   padding: 16px 24px 18px 24px;
-  border-bottom: 1px solid #DCDCE4;
+  border-bottom: 1px solid ${({ theme }) => theme.colors.neutral200};
 `;
 
 interface LockedSectionProps {
@@ -90,9 +91,9 @@ const LockedSection = ({
             <Typography
                 variant="delta"
                 fontWeight="bold"
+                textColor={isLocked ? "neutral500" : "neutral800"}
                 style={{
                     fontSize: '14px',
-                    color: isLocked ? 'rgb(142, 142, 169)' : '#32324D',
                 }}
             >
                 {title}
@@ -100,11 +101,11 @@ const LockedSection = ({
 
             <Typography
                 variant="pi"
+                textColor={isLocked ? "neutral500" : "neutral600"}
                 style={{
                     fontSize: '12px',
                     marginTop: '4px',
                     display: 'block',
-                    color: isLocked ? 'rgb(192, 192, 207)' : '#666687',
                 }}
             >
                 {description}
@@ -132,11 +133,12 @@ const LockedSection = ({
 
               <Typography
                 variant="omega"
-                style={{ fontSize: '13px', color: 'rgb(102, 102, 135)', textAlign: 'center' }}
+                textColor="neutral600"
+                style={{ fontSize: '13px', textAlign: 'center' }}
               >
-                Fill in <b style={{ color: '#32324D' }}>Base Domain</b>,{' '}
-                <b style={{ color: '#32324D' }}>OpenAI API Key</b> and{' '}
-                <b style={{ color: '#32324D' }}>Contact Link</b> first.
+                Fill in <Typography fontWeight="bold" textColor="neutral800" style={{ fontSize: '13px' }}>Base Domain</Typography>,{' '}
+                <Typography fontWeight="bold" textColor="neutral800" style={{ fontSize: '13px' }}>OpenAI API Key</Typography> and{' '}
+                <Typography fontWeight="bold" textColor="neutral800" style={{ fontSize: '13px' }}>Contact Link</Typography> first.
               </Typography>
             </Flex>
           </BlurOverlay>

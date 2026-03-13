@@ -4,10 +4,10 @@ import { Check, Information } from '@strapi/icons';
 import { useFetchClient, useNotification } from '@strapi/admin/strapi-admin';
 
 import ChatbotPreview from '../components/ChatbotPreview';
-import ConfigSettings from '../components/ConfigSettings';
-import CollectionSection from '../components/CollectionSection';
+import BasicSettings from '../components/BasicSettings';
+import ResponseTemplates from '../components/ResponseTemplates';
 import SuggestedQuestions from '../components/SuggestedQuestions';
-import InstructionsSection from '../components/InstructionsSection';
+import AiInstructions from '../components/AiInstructions';
 import SetupProgress from '../components/SetupProgress';
 import LockedSection from '../components/LockedSection';
 
@@ -54,7 +54,7 @@ const HomePage = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [originalData, setOriginalData] = useState<string>('');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  
+
   const isLocked = !baseDomain || !openaiKey || !contactLink;
 
   const { get, post } = useFetchClient();
@@ -222,57 +222,59 @@ const HomePage = () => {
       {/* UNSAVED CHANGES BAR */}
       {hasUnsavedChanges && (
         <Box
+          background="warning100"
+          borderColor="warning200"
           style={{
             width: '100%',
             height: '50px',
-            background: '#FFF3CD',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             paddingRight: '32px',
             paddingLeft: '32px',
-            borderBottom: '2px solid #FDEAA8',
+            borderBottomWidth: '2px',
+            borderBottomStyle: 'solid',
             position: 'sticky',
             top: 0,
             zIndex: 6,
           }}
         >
           <Flex alignItems="center" gap={2}>
-            <Information style={{ color: 'rgb(148, 83, 0)', width: 18, height: 18 }} />
+            <Information color="warning600" style={{ width: 18, height: 18 }} />
           <Typography
+            textColor="warning600"
             style={{
               fontWeight: 500,
               fontSize: '13px',
               lineHeight: '19.5px',
-              color: '#8C6D1F',
             }}
           >
             You have unsaved changes
           </Typography>
         </Flex>
-          
+
           <Flex gap={4}>
-            <button 
+            <button
               onClick={() => init()}
-              style={{ 
-                background: 'none', 
-                border: 'none', 
+              style={{
+                background: 'none',
+                border: 'none',
                 cursor: 'pointer',
                 fontFamily: 'Inter',
                 fontWeight: 500,
                 fontSize: '12px',
-                color: '#32324D'
+                color: 'inherit' // Inherits from Strapi theme context
               }}
             >
               Discard
             </button>
             <Button
               onClick={save}
+              background="primary600"
               style={{
                 width: '87.84px',
                 height: '28px',
                 borderRadius: '10px',
-                background: '#4945FF',
                 border: 'none',
                 fontSize: '12px',
                 fontWeight: 500,
@@ -301,11 +303,11 @@ const HomePage = () => {
         <Box style={{ maxWidth: '704px', margin: '0 auto', width: '100%' }}>
           <Flex justifyContent="space-between" alignItems="baseline">
             <Box>
-              <Typography style={{ fontWeight: 700, fontSize: '20px', lineHeight: '30px', display: 'block', color: '#32324d' }}>
+              <Typography textColor="neutral800" style={{ fontWeight: 700, fontSize: '20px', lineHeight: '30px', display: 'block' }}>
                 Chatbot Configuration
               </Typography>
               <Box paddingTop={1}>
-                <Typography style={{ fontWeight: 400, fontSize: '13px', lineHeight: '19.5px', color: '#666687' }}>
+                <Typography textColor="neutral600" style={{ fontWeight: 400, fontSize: '13px', lineHeight: '19.5px' }}>
                   Configure your AI chatbot's identity, data, and behaviour.
                 </Typography>
               </Box>
@@ -314,18 +316,18 @@ const HomePage = () => {
             <Flex alignItems="center">
               {isSaved ? (
                 <Box
+                  background="success100"
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    background: '#eafbe7',
                     padding: '0 14px',
                     height: '34px',
                     borderRadius: '8px',
                   }}
                 >
-                  <Check width={14} height={14} color="rgb(50, 128, 72)" />
-                  <Typography style={{ fontSize: '13px', fontWeight: 500, color: 'rgb(50, 128, 72)', fontFamily: 'Inter, sans-serif' }}>
+                  <Check width={14} height={14} color="success600" />
+                  <Typography textColor="success600" style={{ fontSize: '13px', fontWeight: 500, fontFamily: 'Inter, sans-serif' }}>
                     Saved!
                   </Typography>
                 </Box>
@@ -335,8 +337,8 @@ const HomePage = () => {
                     onClick={save}
                     disabled={!openaiKey || openaiKey.trim() === ''}
                     startIcon={<Check width={14} height={14} />}
+                    background="primary600"
                     style={{
-                      background: 'rgb(73, 69, 255)',
                       border: 'none',
                       color: 'white',
                       fontSize: '13px',
@@ -370,7 +372,7 @@ const HomePage = () => {
             instructions={!!systemInstructions && !!responseInstructions}
           />
 
-          <ConfigSettings
+          <BasicSettings
             baseDomain={baseDomain}
             openaiKey={openaiKey}
             contactLink={contactLink}
@@ -388,7 +390,7 @@ const HomePage = () => {
             description="Define which data fields and card layouts the AI can use in structured responses."
             isLocked={isLocked}
           >
-            <CollectionSection
+            <ResponseTemplates
               collections={activeCollections}
               availableCollections={allContentTypes.filter(
                 (c) =>
@@ -464,7 +466,7 @@ const HomePage = () => {
             description="Rules and context the AI applies before every response. One instruction per line."
             isLocked={isLocked}
           >
-            <InstructionsSection
+            <AiInstructions
               systemInstructions={systemInstructions}
               responseInstructions={responseInstructions}
               onUpdateSystem={setSystemInstructions}

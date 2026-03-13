@@ -1,7 +1,7 @@
-import { getTranslation } from './utils/getTranslation';
 import { PLUGIN_ID } from './pluginId';
 import { Initializer } from './components/Initializer';
 import { PluginIcon } from './components/PluginIcon';
+import '@fontsource-variable/inter';
 
 export default {
   register(app: any) {
@@ -14,7 +14,6 @@ export default {
       },
       Component: async () => {
         const { App } = await import('./pages/App');
-
         return App;
       },
     });
@@ -27,12 +26,34 @@ export default {
     });
   },
 
+  bootstrap() {
+    const style = document.createElement('style');
+
+    style.innerHTML = `
+    html, body,
+    #main-content,
+    .strapi-helper-plugin,
+    body * {
+      font-family: 'Inter', sans-serif !important;
+
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+
+    [class*="Typography"] {
+      font-family: 'Inter', sans-serif !important;
+    }
+  `;
+
+    document.head.appendChild(style);
+  },
+
   async registerTrads({ locales }: { locales: string[] }) {
     return Promise.all(
       locales.map(async (locale) => {
         try {
           const { default: data } = await import(`./translations/${locale}.json`);
-
           return { data, locale };
         } catch {
           return { data: {}, locale };

@@ -1,10 +1,11 @@
 import React from 'react';
 import { Box, Typography } from '@strapi/design-system';
-import { Pencil, Check } from '@strapi/icons';
+import { Pencil, Check, Eye, EyeStriked } from '@strapi/icons';
+import { useTheme } from 'styled-components';
 
 type SettingType = 'key' | 'domain' | 'contact';
 
-interface ConfigSettingsProps {
+interface BasicSettingsProps {
   openaiKey: string;
   baseDomain: string;
   contactLink: string;
@@ -44,6 +45,9 @@ const SettingRow = ({
   onManage,
   isLast = false,
 }: SettingRowProps) => {
+  const [showKey, setShowKey] = React.useState(false);
+  const theme = useTheme();
+
   const handleSave = () => {
     onManage(type, tempValue);
     setEditing(null);
@@ -62,9 +66,10 @@ const SettingRow = ({
         display: 'flex',
         gap: '16px',
         padding: '16px 24px',
-        borderBottom: isLast ? 'none' : '1px solid rgb(234,234,239)',
-        background: editing === type ? '#fafaff' : '#fff',
+        borderBottom: isLast ? 'none' : `1px solid ${theme.colors.neutral150}`,
+        background: editing === type ? theme.colors.primary100 : theme.colors.neutral0,
         transition: 'background 0.2s ease',
+        alignItems: 'center',
       }}
     >
       {/* LEFT */}
@@ -72,17 +77,13 @@ const SettingRow = ({
         <Typography
           variant="omega"
           fontWeight="600"
-          textColor="#32324d"
+          textColor="neutral800"
           style={{ fontSize: '13px', display: 'block', marginBottom: '2px' }}
         >
           {title}
         </Typography>
 
-        <Typography
-          variant="pi"
-          textColor="#8E8EA9"
-          style={{ lineHeight: 1.4, fontSize: '11px' }}
-        >
+        <Typography variant="pi" textColor="neutral500" style={{ lineHeight: 1.4, fontSize: '11px' }}>
           {description}
         </Typography>
       </Box>
@@ -92,42 +93,73 @@ const SettingRow = ({
         <Box style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {editing === type ? (
             <>
-              <input
-                autoFocus
-                type="text"
-                placeholder={
-                  type === 'domain'
-                    ? 'https://your-domain.com'
-                    : type === 'contact'
-                    ? 'https://your-domain.com/contact'
-                    : 'sk-…'
-                }
-                value={tempValue}
-                onChange={(e) => setTempValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSave();
-                }}
+              {/* NEW WRAPPER FOR INPUT + EYE ICON */}
+              <Box
                 style={{
+                  display: 'flex',
+                  alignItems: 'center',
                   width: '100%',
                   maxWidth: '360px',
-                  padding: '8px 12px',
                   borderRadius: '8px',
-                  outline: 'none',
-                  border: '1.5px solid #4945FF',
-                  fontSize: '13px',
-                  color: '#32324D',
-                  background: '#fff',
-                  boxShadow: '0 0 0 3px rgba(73,69,255,0.1)',
+                  border: `1.5px solid ${theme.colors.primary600}`,
+                  background: theme.colors.neutral0,
+                  // boxShadow: `0 0 0 3px ${theme.colors.primary100}`,
+                  overflow: 'hidden',
                 }}
-              />
+              >
+                <input
+                  autoFocus
+                  type={type === 'key' && !showKey ? 'password' : 'text'}
+                  placeholder={
+                    type === 'domain'
+                      ? 'https://your-domain.com'
+                      : type === 'contact'
+                        ? 'https://your-domain.com/contact'
+                        : 'sk-…'
+                  }
+                  value={tempValue}
+                  onChange={(e) => setTempValue(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+                  style={{
+                    flex: 1,
+                    padding: '8px 12px',
+                    border: 'none',
+                    outline: 'none',
+                    fontSize: '13px',
+                    color: theme.colors.neutral800,
+                    background: 'transparent',
+                  }}
+                />
+
+                {/* EYE ICON TOGGLE */}
+                {type === 'key' && (
+                  <button
+                    onClick={() => setShowKey(!showKey)}
+                    style={{
+                      paddingRight: '12px',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                  >
+                    {showKey ? (
+                      <Eye width={16} height={16} fill={theme.colors.neutral500} />
+                    ) : (
+                      <EyeStriked width={16} height={16} fill={theme.colors.neutral500} />
+                    )}
+                  </button>
+                )}
+              </Box>
 
               <button
                 onClick={handleSave}
                 style={{
                   padding: '6px 12px',
                   borderRadius: '8px',
-                  background: '#4945FF',
-                  color: '#fff',
+                  background: theme.colors.primary600,
+                  color: theme.colors.neutral0,
                   border: 'none',
                   cursor: 'pointer',
                   fontWeight: 600,
@@ -142,8 +174,9 @@ const SettingRow = ({
                 style={{
                   padding: '6px 12px',
                   borderRadius: '8px',
-                  border: '1px solid #ddd',
-                  background: '#fff',
+                  border: `1px solid ${theme.colors.neutral200}`,
+                  background: theme.colors.neutral0,
+                  color: theme.colors.neutral800,
                   cursor: 'pointer',
                   fontSize: '12px',
                 }}
@@ -153,11 +186,10 @@ const SettingRow = ({
             </>
           ) : (
             <>
-              {/* VALUE */}
               {value ? (
                 <Typography
                   variant="omega"
-                  textColor={type === 'key' ? '#8E8EA9' : '#4945FF'}
+                  textColor={type === 'key' ? "neutral500" : "primary600"}
                   style={{
                     fontSize: '13px',
                     maxWidth: '320px',
@@ -173,12 +205,12 @@ const SettingRow = ({
                   style={{
                     padding: '2px 10px',
                     borderRadius: '999px',
-                    background: '#FCECEA',
+                    background: theme.colors.danger100,
                   }}
                 >
                   <Typography
                     variant="pi"
-                    textColor="#D02B20"
+                    textColor="danger600"
                     fontWeight="600"
                     style={{ fontSize: '11px', letterSpacing: '0.04em' }}
                   >
@@ -187,25 +219,15 @@ const SettingRow = ({
                 </Box>
               )}
 
-              {/* SAVED MESSAGE */}
               {saved === type && (
                 <Box
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    marginLeft: '4px',
-                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '4px' }}
                 >
-                  <Check width={12} height={12} fill="#328048" />
-
+                  <Check width={12} height={12} fill={theme.colors.success600} />
                   <Typography
                     variant="pi"
-                    style={{
-                      color: '#328048',
-                      fontSize: '12px',
-                      fontWeight: 500,
-                    }}
+                    textColor="success600"
+                    style={{ fontSize: '12px', fontWeight: 500 }}
                   >
                     Saved
                   </Typography>
@@ -228,8 +250,8 @@ const SettingRow = ({
                 gap: '6px',
                 padding: '4px 10px',
                 borderRadius: '8px',
-                border: '1px solid #4945ff',
-                color: '#4945FF',
+                border: `1px solid ${theme.colors.primary600}`,
+                color: theme.colors.primary600,
                 fontSize: '11px',
                 fontWeight: 600,
                 background: 'transparent',
@@ -248,25 +270,21 @@ const SettingRow = ({
   );
 };
 
-const ConfigSettings = ({
-  openaiKey,
-  baseDomain,
-  contactLink,
-  onManage,
-}: ConfigSettingsProps) => {
+const BasicSettings = ({ openaiKey, baseDomain, contactLink, onManage }: BasicSettingsProps) => {
   const [hovered, setHovered] = React.useState<SettingType | null>(null);
   const [editing, setEditing] = React.useState<SettingType | null>(null);
   const [saved, setSaved] = React.useState<SettingType | null>(null);
   const [tempValue, setTempValue] = React.useState('');
+  const theme = useTheme();
 
   return (
     <Box
       style={{
-        background: '#fff',
-        border: '1px solid #dcdce4',
+        background: theme.colors.neutral0,
+        border: `1px solid ${theme.colors.neutral200}`,
         borderRadius: '12px',
         overflow: 'hidden',
-        boxShadow: 'rgba(33,33,52,0.04) 0px 1px 4px',
+        // boxShadow: `${theme.colors.neutral900} 0px 1px 4px`,
         marginBottom: '24px',
       }}
     >
@@ -274,32 +292,34 @@ const ConfigSettings = ({
       <Box
         style={{
           padding: '16px 24px',
-          borderBottom: '1px solid rgb(234,234,239)',
+          borderBottom: `1px solid ${theme.colors.neutral150}`,
         }}
       >
         <div>
-          <h2
+          <Typography
+            as="h2"
+            textColor="neutral800"
             style={{
               fontSize: '14px',
               fontWeight: 700,
-              color: 'rgb(50,50,77)',
               margin: 0,
             }}
           >
             Basic Settings
-          </h2>
+          </Typography>
 
-          <p
+          <Typography
+            as="p"
+            textColor="neutral600"
             style={{
               fontSize: '12px',
-              color: 'rgb(102,102,135)',
               marginTop: '3px',
               lineHeight: 1.5,
               marginBottom: 0,
             }}
           >
             Core identity and access configuration for your chatbot.
-          </p>
+          </Typography>
         </div>
       </Box>
 
@@ -355,4 +375,4 @@ const ConfigSettings = ({
   );
 };
 
-export default ConfigSettings;
+export default BasicSettings;

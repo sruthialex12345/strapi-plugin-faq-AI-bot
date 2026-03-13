@@ -1,17 +1,33 @@
 import React from 'react';
-import styled from 'styled-components';
+import styled, { useTheme } from 'styled-components';
 import { Box, Flex, Typography } from '@strapi/design-system';
-import { CheckCircle,  CrossCircle } from '@strapi/icons'; // Added Dot import
+import { CheckCircle, CrossCircle } from '@strapi/icons';
 
-const ZapIcon = ({ width = 15, height = 15, color = 'rgb(73, 69, 255)' }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width={width} height={height} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" /></svg>
-);
+// Fixed the implicit 'any' by adding a type definition
+const ZapIcon = ({ width = 15, height = 15, color }: { width?: number; height?: number; color?: string }) => {
+  const theme = useTheme();
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width={width} 
+      height={height} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke={color || theme.colors.primary600} 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />
+    </svg>
+  );
+};
 
 const ProgressContainer = styled(Box)`
   border-radius: 12px;
-  border: 1px solid rgb(220, 220, 228);
-  box-shadow: rgba(33, 33, 52, 0.04) 0px 1px 4px;
-  background: white;
+  border: 1px solid ${({ theme }) => theme.colors.neutral200};
+//   box-shadow: ${({ theme }) => theme.colors.neutral900} 0px 1px 4px;
+  background: ${({ theme }) => theme.colors.neutral0};
   margin-bottom: 24px;
   overflow: hidden;
 `;
@@ -19,7 +35,7 @@ const ProgressContainer = styled(Box)`
 const ProgressBarWrapper = styled.div`
   width: 100%;
   height: 6px;
-  background: rgb(234, 234, 239);
+  background: ${({ theme }) => theme.colors.secondary100};
   border-radius: 999px;
   overflow: hidden;
 `;
@@ -27,10 +43,9 @@ const ProgressBarWrapper = styled.div`
 const ProgressBar = styled.div<{ percent: number; isFull: boolean }>`
   height: 100%;
   width: ${({ percent }) => percent}%;
-  /* Switches to Blue when not full, Green Gradient when full */
-  background: ${({ isFull }) => (isFull 
-    ? 'linear-gradient(90deg, rgb(50, 128, 72), rgb(74, 222, 128))' 
-    : 'linear-gradient(90deg,rgb(73, 69, 255),rgb(124, 120, 255))')};
+  background: ${({ isFull, theme }) => (isFull 
+    ? `linear-gradient(90deg, ${theme.colors.success600}, ${theme.colors.success200})` 
+    : `linear-gradient(90deg, ${theme.colors.primary600}, ${theme.colors.primary500})`)};
   transition: width 0.5s ease-in-out;
   border-radius: 999px;
 `;
@@ -45,10 +60,9 @@ const StatusTag = styled.div<{ active: boolean }>`
   font-weight: 500;
   font-family: 'Inter', sans-serif;
   
-  /* Matches the muted lavender/grey look in your screenshot for disabled state */
-  background: ${({ active }) => (active ? 'rgb(234, 251, 231)' : '#F6F6F9')};
-  border: 1px solid ${({ active }) => (active ? 'rgb(198, 240, 194)' : '#EAEAEF')};
-  color: ${({ active }) => (active ? 'rgb(50, 128, 72)' : '#8E8EA9')};
+  background: ${({ active, theme }) => (active ? theme.colors.success100 : theme.colors.neutral100)};
+  border: 1px solid ${({ active, theme }) => (active ? theme.colors.success200 : theme.colors.neutral150)};
+  color: ${({ active, theme }) => (active ? theme.colors.success600 : theme.colors.neutral500)};
 
   svg {
     width: 11px;
@@ -57,9 +71,8 @@ const StatusTag = styled.div<{ active: boolean }>`
 `;
 
 const CountBadge = styled.span<{ isFull: boolean }>`
-  /* Switches to Blue theme when not full */
-  background: ${({ isFull }) => (isFull ? 'rgb(234, 251, 231)' : '#F0F0FF')};
-  color: ${({ isFull }) => (isFull ? 'rgb(50, 128, 72)' : '#4945FF')};
+  background: ${({ isFull, theme }) => (isFull ? theme.colors.success100 : theme.colors.primary100)};
+  color: ${({ isFull, theme }) => (isFull ? theme.colors.success600 : theme.colors.primary600)};
   padding: 4px 12px;
   border-radius: 999px;
   font-size: 13px;
@@ -116,7 +129,6 @@ const SetupProgress = ({ baseDomain, openaiKey, contactLink, collections, questi
         <Flex gap={2} wrap="wrap" marginTop={4}>
           {tasks.map((task, i) => (
             <StatusTag key={i} active={task.done}>
-              {/* Uses CheckCircle if done, Dot if not done */}
               {task.done ? <CheckCircle /> : <CrossCircle />}
               {task.label}
             </StatusTag>
