@@ -78,6 +78,20 @@ export default ({ strapi }: { strapi: Core.Strapi }) => ({
       return;
     }
 
+    const pluginStore = strapi.store({
+      environment: null,
+      type: 'plugin',
+      name: 'faq-ai-bot',
+    });
+    const existingSettings = await pluginStore.get({ key: 'settings' });
+
+    if (settings.openaiKey && (existingSettings as any)?.openaiKey !== settings.openaiKey) {
+      await pluginStore.set({
+        key: 'token_usage',
+        value: { totalTokens: 0, promptTokens: 0, completionTokens: 0 },
+      });
+    }
+
     const data = await strapi.plugin('faq-ai-bot').service('config').setConfig(settings);
 
     ctx.body = data;

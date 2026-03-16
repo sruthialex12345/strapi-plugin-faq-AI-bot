@@ -47,11 +47,11 @@ async function getInstructions(strapi: any) {
 async function getCardStyles(strapi: any) {
   const pluginStore = strapi.store({
     environment: null,
-    type: "plugin",
-    name: "faq-ai-bot",
+    type: 'plugin',
+    name: 'faq-ai-bot',
   });
 
-  const settings = await pluginStore.get({ key: "settings" });
+  const settings = await pluginStore.get({ key: 'settings' });
 
   return settings?.cardStyles || {};
 }
@@ -126,7 +126,7 @@ async function getActiveCollections(strapi: any) {
   }
 }
 
-async function rephraseQuestion(strapi: any, history: any[], question: string) {
+async function rephraseQuestion(strapi: any, history: any[], question: string, usage: any) {
   if (!history || !Array.isArray(history) || history.length === 0) {
     return question;
   }
@@ -147,7 +147,7 @@ async function rephraseQuestion(strapi: any, history: any[], question: string) {
         ### RULES
         1. **Dependency Check (The "Pronoun" Rule):**
            - ONLY combine with history if the new question contains **Pronouns** ("it", "that", "they") or is **Grammatically Incomplete** ("How much?", "Where do I buy?", "Is it refundable?").
-           
+
         2. **Independence Check (The "Specifics" Rule):**
            - If the user asks a complete question containing a **New Specific Noun** or **Scenario** (e.g., "Group of 7 people", "Booking for pets"), treat it as a **Standalone Query**.
            - **Do NOT** attach the previous topic to it.
@@ -161,6 +161,9 @@ async function rephraseQuestion(strapi: any, history: any[], question: string) {
         { role: 'user', content: question },
       ],
     });
+    usage.prompt_tokens += response.usage?.prompt_tokens || 0;
+    usage.completion_tokens += response.usage?.completion_tokens || 0;
+    usage.total_tokens += response.usage?.total_tokens || 0;
     const rewritten = response.choices[0].message.content?.trim();
 
     if (!rewritten) return question;
@@ -302,11 +305,11 @@ async function searchRealtime(strapi: any, plan: any, activeCollections: any) {
 
     // LIST / SEARCH OPERATION
 
-        const contentType = strapi.contentTypes[uid];
+    const contentType = strapi.contentTypes[uid];
 
     const mediaFields = config.fields.filter((field: string) => {
       const attr = contentType.attributes[field];
-      return attr?.type === "media";
+      return attr?.type === 'media';
     });
 
     let populateObj: any = undefined;
@@ -321,23 +324,23 @@ async function searchRealtime(strapi: any, plan: any, activeCollections: any) {
       filters: sanitizedFilters,
       sort: plan.sort,
       limit: 10,
-            ...(populateObj ? { populate: populateObj } : {}),
-
+      ...(populateObj ? { populate: populateObj } : {}),
     });
 
     const cleaned = result.map((row: any) => {
       const clean: any = {};
-    for (const f of config.fields) {
-      const value = row[f];
+      for (const f of config.fields) {
+        const value = row[f];
 
-      // If it's a populated media object
-      if (value && typeof value === "object" && value.url) {
-        console.log(`🖼 Extracted image for field '${f}':`, value.url);
-        clean[f] = value.url;
-      } else {
-        clean[f] = value;
+        // If it's a populated media object
+        if (value && typeof value === 'object' && value.url) {
+          console.log(`🖼 Extracted image for field '${f}':`, value.url);
+          clean[f] = value.url;
+        } else {
+          clean[f] = value;
+        }
       }
-    }      return clean;
+      return clean;
     });
 
     return {
@@ -368,7 +371,7 @@ function cosineSimilarity(a: number[], b: number[]) {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-async function searchFAQ(question: string, strapi: any) {
+async function searchFAQ(question: string, strapi: any, usage: any) {
   // 1. Create embedding
   const openai = await getOpenAI(strapi);
 
@@ -376,6 +379,9 @@ async function searchFAQ(question: string, strapi: any) {
     model: 'text-embedding-3-small',
     input: question,
   });
+
+  usage.prompt_tokens += embedding.usage?.prompt_tokens || 0;
+  usage.total_tokens += embedding.usage?.total_tokens || 0;
 
   let queryVector = embedding.data[0].embedding;
 
@@ -435,7 +441,8 @@ async function simplePlanner(
   strapi: any,
   question: string,
   activeCollections: any[],
-  instructions: { system: string }
+  instructions: { system: string },
+  usage: any
 ) {
   const openai = await getOpenAI(strapi);
 
@@ -602,6 +609,10 @@ ${JSON.stringify(activeCollections, null, 2)}
     ],
   });
 
+  usage.prompt_tokens += response.usage?.prompt_tokens || 0;
+  usage.completion_tokens += response.usage?.completion_tokens || 0;
+  usage.total_tokens += response.usage?.total_tokens || 0;
+
   try {
     const raw = response.choices[0].message.content || '{}';
 
@@ -619,7 +630,7 @@ ${JSON.stringify(activeCollections, null, 2)}
   }
 }
 
-async function realtimeInterpreterAI(strapi: any, question: string, realtimeData: any) {
+async function realtimeInterpreterAI(strapi: any, question: string, realtimeData: any, usage: any) {
   if (!realtimeData) return null;
   const openai = await getOpenAI(strapi);
 
@@ -654,6 +665,10 @@ ${JSON.stringify(realtimeData)}
     ],
   });
 
+  usage.prompt_tokens += response.usage?.prompt_tokens || 0;
+  usage.completion_tokens += response.usage?.completion_tokens || 0;
+  usage.total_tokens += response.usage?.total_tokens || 0;
+
   const text = response.choices[0].message.content;
 
   return text;
@@ -668,7 +683,8 @@ async function finalAggregator(
   realtimeText: any,
   contactLink: string | null,
   instructions: { response: string },
-  cardStyles: any
+  cardStyles: any,
+  usage: any
 ) {
   ctx.set('Content-Type', 'text/event-stream');
   ctx.set('Cache-Control', 'no-cache');
@@ -769,26 +785,58 @@ ${realtimeText}
     ],
   });
 
+  let fullText = '';
+
   for await (const chunk of stream) {
     const token = chunk.choices?.[0]?.delta?.content;
     if (token) {
+      fullText += token;
       ctx.res.write(`data: ${token}\n\n`);
     }
   }
- if (realtimeMeta && realtimeMeta.type === "list") {
+
+  const estimatedTokens = Math.ceil(fullText.length / 4);
+
+  usage.completion_tokens += estimatedTokens;
+  usage.total_tokens += estimatedTokens;
+
+  if (realtimeMeta && realtimeMeta.type === 'list') {
     const collectionUid = `api::${realtimeMeta.collection}.${realtimeMeta.collection}`;
     const cardsPayload = {
       title: realtimeMeta.collection,
       schema: realtimeMeta.schema,
       items: realtimeMeta.items,
-            cardStyle: cardStyles?.[collectionUid] || null
-
+      cardStyle: cardStyles?.[collectionUid] || null,
     };
     ctx.res.write(`event: cards\n`);
     ctx.res.write(`data: ${JSON.stringify(cardsPayload)}\n\n`);
   }
 
   ctx.res.write('data: [DONE]\n\n');
+
+  try {
+    const pluginStore = strapi.store({
+      environment: null,
+      type: 'plugin',
+      name: 'faq-ai-bot',
+    });
+    const existing = (await pluginStore.get({ key: 'token_usage' })) || {
+      totalTokens: 0,
+      promptTokens: 0,
+      completionTokens: 0,
+    };
+    await pluginStore.set({
+      key: 'token_usage',
+      value: {
+        totalTokens: existing.totalTokens + usage.total_tokens,
+        promptTokens: existing.promptTokens + usage.prompt_tokens,
+        completionTokens: existing.completionTokens + usage.completion_tokens,
+      },
+    });
+  } catch (e) {
+    console.error('[token_usage save error]', e);
+  }
+
   ctx.res.end();
 }
 
@@ -813,6 +861,12 @@ export default ({ strapi }: { strapi: any }) => ({
   async ask(ctx: any) {
     const { question, history = [] } = ctx.request.body;
 
+    const usage = {
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+    };
+
     const instructions = await getInstructions(strapi);
 
     let jsonContext = ctx.request.body.context || {};
@@ -826,16 +880,16 @@ export default ({ strapi }: { strapi: any }) => ({
       if (!activeCollections || activeCollections.length === 0) {
       }
 
-      const rewritten = await rephraseQuestion(strapi, history, question);
+      const rewritten = await rephraseQuestion(strapi, history, question, usage);
 
       const contactLink = await getContactLink(strapi);
       const cardStyles = await getCardStyles(strapi);
 
       // FAQ
-      const faqResults = await searchFAQ(rewritten, strapi);
+      const faqResults = await searchFAQ(rewritten, strapi, usage);
 
       // PLAN
-      const plan = await simplePlanner(strapi, rewritten, activeCollections, instructions);
+      const plan = await simplePlanner(strapi, rewritten, activeCollections, instructions, usage);
 
       // REALTIME
 
@@ -845,7 +899,7 @@ export default ({ strapi }: { strapi: any }) => ({
       if (plan && plan.collection) {
         realtimeResults = await searchRealtime(strapi, plan, activeCollections);
 
-        realtimeAIText = await realtimeInterpreterAI(strapi, rewritten, realtimeResults);
+        realtimeAIText = await realtimeInterpreterAI(strapi, rewritten, realtimeResults, usage);
       } else {
       }
 
@@ -858,7 +912,8 @@ export default ({ strapi }: { strapi: any }) => ({
         realtimeAIText,
         contactLink,
         instructions,
-        cardStyles
+        cardStyles,
+        usage
       );
 
       return;
@@ -866,5 +921,29 @@ export default ({ strapi }: { strapi: any }) => ({
       console.error('[ERROR]', err);
       ctx.body = { type: 'text', content: 'Error occurred.' };
     }
+  },
+
+  async getUsage(ctx: any) {
+    const pluginStore = strapi.store({
+      environment: null,
+      type: 'plugin',
+      name: 'faq-ai-bot',
+    });
+    const usage = (await pluginStore.get({ key: 'token_usage' })) || {
+      totalTokens: 0,
+      promptTokens: 0,
+      completionTokens: 0,
+    };
+
+    // GPT-4o mini pricing
+    // Input:  $0.150 per 1M tokens
+    // Output: $0.600 per 1M tokens
+    const inputCost  = (usage.promptTokens     / 1_000_000) * 0.150;
+    const outputCost = (usage.completionTokens / 1_000_000) * 0.600;
+
+    ctx.body = {
+      tokensUsed: usage.totalTokens,
+      estimatedCost: parseFloat((inputCost + outputCost).toFixed(4)),
+    };
   },
 });

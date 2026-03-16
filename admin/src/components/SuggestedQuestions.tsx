@@ -170,10 +170,10 @@ const SuggestedQuestions = ({
                     padding: '6px 12px',
                     borderRadius: '8px',
                     border: `1px solid ${theme.colors.neutral200}`,
-                    background: theme.colors.neutral0,
+                    background: 'transparent',
+                    color: theme.colors.neutral600,
                     cursor: 'pointer',
                     fontSize: '12px',
-                    color: theme.colors.neutral600,
                   }}
                 >
                   Cancel
@@ -291,10 +291,10 @@ const SuggestedQuestions = ({
               padding: '6px 12px',
               borderRadius: '8px',
               border: `1px solid ${theme.colors.neutral200}`,
-              background: theme.colors.neutral0,
+              background: 'transparent',
+              color: theme.colors.neutral600,
               cursor: 'pointer',
               fontSize: '12px',
-              color: theme.colors.neutral600,
             }}
           >
             Cancel

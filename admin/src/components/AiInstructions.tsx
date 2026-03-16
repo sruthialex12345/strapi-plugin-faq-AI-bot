@@ -22,7 +22,7 @@ const getCleanText = (text: string | undefined) => {
   Object.values(tonePrompts).forEach(prompt => {
     cleaned = cleaned.replace(prompt, '');
   });
-  return cleaned.trim();
+  return cleaned;
 };
 
 const AiInstructions = ({
@@ -199,7 +199,7 @@ Don't mention competitor airlines`}
               value={getCleanText(responseInstructions)}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
                 const toneText = tone ? tonePrompts[tone] : '';
-                onUpdateResponse(`${toneText}\n\n${e.target.value}`.trim());
+                onUpdateResponse(`${toneText}\n\n${e.target.value}`);
               }}
               placeholder={`Reply in proper formatted way.
 Always keep in mind that you are wokring for ABC company.

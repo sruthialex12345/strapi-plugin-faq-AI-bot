@@ -25,5 +25,14 @@ export default () => ({
         auth: false,
       },
     },
+    {
+      method: 'GET',
+      path: '/usage',
+      handler: 'ask.getUsage',
+      config: {
+        auth: false,
+        policies: []
+      },
+    },
   ],
 });
